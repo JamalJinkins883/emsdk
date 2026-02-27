@@ -64,17 +64,23 @@ emcc converter.cpp -o build/converter.js --bind -s WASM=1 -s ALLOW_MEMORY_GROWTH
 
 ## Running
 
-After building, start a development server:
+The File Converter now includes a backend service that will automatically compile
+any uploaded C/C++ project using Emscripten. This eliminates the need for manual
+compilation steps – simply upload and the server does the rest.
+
+To start the server:
 
 ```bash
-# Using Make
-make server
+cd file-converter
+# install dependencies if needed
+pip3 install -r requirements-dev.txt
 
-# Or manually
-python3 -m http.server 8000 --directory .
+# launch the Flask application (serves static files and handles /compile)
+python3 server.py
 ```
 
-Then open `http://localhost:8000` in your browser.
+The service listens on port 8000 by default. Navigate to
+`http://localhost:8000` in your browser to use the application.
 
 ## Usage
 

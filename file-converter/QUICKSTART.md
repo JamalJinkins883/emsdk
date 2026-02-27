@@ -5,10 +5,11 @@
 ### Step 1: Access the Application
 The file converter is running at: **http://localhost:8000**
 
-*The server is already running in the terminal. If it stops, run:*
+*The server is already running in the terminal. If it stops, start the Flask service instead of just a static HTTP server:*
 ```bash
 cd /workspaces/emsdk/file-converter
-make server
+pip3 install -r requirements-dev.txt   # first time only
+python3 server.py
 ```
 
 ### Step 2: Upload Files

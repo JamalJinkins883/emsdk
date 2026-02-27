@@ -10,7 +10,7 @@
     <div class="container">
         <header>
             <h1>🔄 File Converter</h1>
-            <p>Convert your project files to web-compatible formats</p>
+            <p>Upload C++ code or assets and receive a fully compiled WebAssembly build automatically</p>
             <div id="statusIndicator" style="text-align: center; margin-top: 10px; font-size: 0.9em;">
                 <span style="color: #f39c12;">⏳ Initializing...</span>
             </div>
@@ -18,10 +18,15 @@
 
         <main>
             <section class="upload-section">
-                <h2>Upload Files</h2>
+                <h2>Upload Files or Folder</h2>
+                <div class="upload-options">
+                    <button class="btn btn-secondary" id="uploadFolderBtn">📁 Upload Folder</button>
+                    <button class="btn btn-secondary" id="uploadFilesBtn">📄 Upload Files</button>
+                </div>
                 <div class="drop-zone" id="dropZone">
-                    <p>Drag and drop files here or click to select</p>
+                    <p>Drag and drop files or folder here to upload</p>
                     <input type="file" id="fileInput" multiple accept=".cpp,.h,.c,.png,.jpg,.jpeg,.ogg,.wav,.mp3,.dll,.txt,.json,.vas">
+                    <input type="file" id="folderInput" webkitdirectory mozdirectory msdirectory odirectory directory style="display:none;">
                 </div>
             </section>
 

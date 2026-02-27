@@ -41,9 +41,11 @@ clean:
 	@echo "$(GREEN)✅ Clean complete$(NC)"
 
 server:
-	@echo "$(GREEN)🚀 Starting development server...$(NC)"
+	@echo "$(GREEN)🚀 Starting development server (with automatic compilation)...$(NC)"
 	@echo "$(YELLOW)📖 Open http://localhost:8000 in your browser$(NC)"
-	python3 -m http.server 8000 --directory .
+	# ensure Flask is installed
+	python3 -m pip install -r requirements-dev.txt
+	python3 server.py
 
 # Run build by default if just called
 all: build
