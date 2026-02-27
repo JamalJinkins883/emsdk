@@ -1,8 +1,7 @@
-// File Converter Application
+// File Converter Application using Emscripten ccall API
 class FileConverterApp {
     constructor() {
         this.files = new Map();
-        this.converter = null;
         this.wasmReady = false;
         this.setupEventListeners();
         this.updateStatus('⏳ Initializing WebAssembly...', '#f39c12');
@@ -29,34 +28,13 @@ class FileConverterApp {
         const processBtn = document.getElementById('processBtn');
         const clearBtn = document.getElementById('clearBtn');
 
-        // File input handler
         fileInput.addEventListener('change', (e) => this.handleFileSelect(e.target.files));
-
-        // Drag and drop
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.classList.add('dragover');
-        });
-
-        dropZone.addEventListener('dragleave', () => {
-            dropZone.classList.remove('dragover');
-        });
-
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('dragover');
-            this.handleFileSelect(e.dataTransfer.files);
-        });
-
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('dragover'); });
+        dropZone.addEventListener('drop', (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); this.handleFileSelect(e.dataTransfer.files); });
         dropZone.addEventListener('click', () => fileInput.click());
-
-        // Process button
         processBtn.addEventListener('click', () => this.processFiles());
-
-        // Clear button
         clearBtn.addEventListener('click', () => this.clearFiles());
-
-        // Tab switching
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', (e) => this.switchTab(e.target.dataset.tab));
         });
@@ -65,19 +43,11 @@ class FileConverterApp {
     async initializeWasm() {
         try {
             this.log('Initializing WebAssembly module...', 'info');
-            
-            // Wait for Module to load with timeout
             let retries = 0;
-            const maxRetries = 50;
-            
-            while (!window.Module || !window.Module.FileConverter) {
-                if (retries++ > maxRetries) {
-                    throw new Error('WebAssembly module failed to load after 5 seconds');
-                }
+            while (!window.Module || !window.Module.ccall) {
+                if (retries++ > 50) throw new Error('WebAssembly module failed to load after 5 seconds');
                 await new Promise(resolve => setTimeout(resolve, 100));
             }
-            
-            this.converter = window.Module;
             this.log('✅ WebAssembly module ready', 'success');
         } catch (error) {
             this.log(`❌ Failed to initialize WASM: ${error.message}`, 'error');
@@ -88,7 +58,6 @@ class FileConverterApp {
     handleFileSelect(fileList) {
         Array.from(fileList).forEach(file => {
             const reader = new FileReader();
-            
             reader.onload = (e) => {
                 const fileType = this.getFileType(file.name);
                 this.files.set(file.name, {
@@ -97,11 +66,9 @@ class FileConverterApp {
                     size: file.size,
                     content: e.target.result
                 });
-                
-                this.log(`Added file: ${file.name} (${fileType})`, 'success');
+                this.log(`Added file: ${file.name}`, 'success');
+                this.updateFileList();
             };
-
-            // For binary files, read as ArrayBuffer and convert to base64
             if (this.isBinaryFile(file.name)) {
                 reader.readAsArrayBuffer(file);
                 reader.onload = (e) => {
@@ -111,8 +78,7 @@ class FileConverterApp {
                         name: file.name,
                         type: this.getFileType(file.name),
                         size: file.size,
-                        content: base64,
-                        isBinary: true
+                        content: base64
                     });
                     this.log(`Added file: ${file.name} (binary)`, 'success');
                     this.updateFileList();
@@ -121,30 +87,11 @@ class FileConverterApp {
                 reader.readAsText(file);
             }
         });
-
-        this.updateFileList();
     }
 
     getFileType(filename) {
         const ext = filename.split('.').pop().toLowerCase();
-        const types = {
-            'cpp': 'C++ Source',
-            'cc': 'C++ Source',
-            'h': 'Header',
-            'hpp': 'Header',
-            'c': 'C Source',
-            'png': 'PNG Image',
-            'jpg': 'JPEG Image',
-            'jpeg': 'JPEG Image',
-            'ogg': 'OGG Audio',
-            'wav': 'WAV Audio',
-            'mp3': 'MP3 Audio',
-            'dll': 'Windows DLL',
-            'so': 'Shared Object',
-            'txt': 'Text File',
-            'json': 'JSON',
-            'vas': 'Valve Script'
-        };
+        const types = { 'cpp': 'C++ Source', 'cc': 'C++ Source', 'h': 'Header', 'hpp': 'Header', 'c': 'C Source', 'png': 'PNG Image', 'jpg': 'JPEG Image', 'jpeg': 'JPEG Image', 'ogg': 'OGG Audio', 'wav': 'WAV Audio', 'mp3': 'MP3 Audio', 'dll': 'Windows DLL', 'so': 'Shared Object', 'txt': 'Text File', 'json': 'JSON', 'vas': 'Valve Script' };
         return types[ext] || 'Unknown';
     }
 
@@ -174,16 +121,7 @@ class FileConverterApp {
             total += file.size;
             const item = document.createElement('div');
             item.className = 'file-item';
-            item.innerHTML = `
-                <div class="file-info">
-                    <h3>${file.name}</h3>
-                    <div class="file-meta">
-                        <p>Type: ${file.type}</p>
-                        <p>Size: ${this.formatSize(file.size)}</p>
-                    </div>
-                </div>
-                <button class="file-remove" onclick="app.removeFile('${filename}')">✕</button>
-            `;
+            item.innerHTML = `<div class="file-info"><h3>${file.name}</h3><div class="file-meta"><p>Type: ${file.type}</p><p>Size: ${this.formatSize(file.size)}</p></div></div><button class="file-remove" onclick="app.removeFile('${filename}')">✕</button>`;
             fileList.appendChild(item);
         });
 
@@ -191,12 +129,30 @@ class FileConverterApp {
         totalSize.textContent = this.formatSize(total);
         document.getElementById('processBtn').disabled = false;
     }
-!this.wasmReady) {
-            this.log('❌ WebAssembly module not ready yet. Please wait...', 'error');
-            alert('Application is still initializing. Please wait a moment and try again.');
+
+    removeFile(filename) {
+        this.files.delete(filename);
+        this.updateFileList();
+        this.log(`Removed file: ${filename}`, 'info');
+    }
+
+    clearFiles() {
+        if (this.files.size > 0 && confirm('Clear all files?')) {
+            try { window.Module.ccall('clearFiles', null, [], []); } catch (e) {}
+            this.files.clear();
+            document.getElementById('fileInput').value = '';
+            document.getElementById('outputSection').style.display = 'none';
+            this.updateFileList();
+            this.log('All files cleared', 'info');
+        }
+    }
+
+    processFiles() {
+        if (!this.wasmReady) {
+            this.log('❌ WebAssembly module not ready yet...', 'error');
+            alert('Application is initializing. Please wait.');
             return;
         }
-
         if (this.files.size === 0) {
             alert('Please upload files first');
             return;
@@ -206,119 +162,50 @@ class FileConverterApp {
         document.getElementById('logsSection').style.display = 'block';
 
         try {
-            // Create a new converter instance
-            const converter = new window.Module.FileConverter();
-
+            window.Module.ccall('clearFiles', null, [], []);
             let successCount = 0;
             this.files.forEach((file, filename) => {
-                converter.addFile(filename, file.type, file.content);
+                window.Module.ccall('addFile', null, ['string', 'string', 'string'], [filename, file.type, file.content]);
                 this.log(`Processing: ${filename}`, 'info');
                 successCount++;
             });
 
             this.log(`Added ${successCount} files to converter`, 'success');
+            const manifest = window.Module.ccall('generateManifest', 'string', [], []);
+            const htmlIndex = window.Module.ccall('generateHtmlIndex', 'string', [], []);
+            const fileCount = window.Module.ccall('getFileCount', 'number', [], []);
 
-            // Generate outputs
-            const manifest = converter.generateManifest();
-            const htmlIndex = converter.generateHtmlIndex();
-
-            // Display results
-            this.displayResults(manifest, htmlIndex, converter);
-
-            this.log('File processing completed successfully!', 'success');
+            this.displayResults(manifest, htmlIndex, fileCount);
+            this.log('Processing completed successfully!', 'success');
             document.getElementById('outputSection').style.display = 'block';
-
-            converter.delete(); // Clean up
         } catch (error) {
-            this.log(`Error during processing: ${error.message}`, 'error');
-            console.error('Processing error:', error
-                successCount++;
-            });
-
-            this.log(`Added ${successCount} files to converter`, 'success');
-
-            // Generate outputs
-            const manifest = converter.generateManifest();
-            const htmlIndex = converter.generateHtmlIndex();
-
-            // Display results
-            this.displayResults(manifest, htmlIndex, converter);
-
-            this.log('File processing completed successfully!', 'success');
-            document.getElementById('outputSection').style.display = 'block';
-
-            converter.delete(); // Clean up
-        } catch (error) {
-            this.log(`Error during processing: ${error.message}`, 'error');
+            this.log(`Error: ${error.message}`, 'error');
         }
     }
 
-    displayResults(manifest, htmlIndex, converter) {
-        // Display manifest
-        const manifestPretty = JSON.stringify(JSON.parse(manifest), null, 2);
-        document.getElementById('manifestOutput').value = manifestPretty;
-
-        // Display HTML
-        document.getElementById('htmlOutput').value = this.formatHtml(htmlIndex);
-
-        // Display analysis
-        this.displayAnalysis(converter);
-    }
-
-    displayAnalysis(converter) {
-        const analysisOutput = document.getElementById('analysisOutput');
+    displayResults(manifest, htmlIndex, fileCount) {
+        document.getElementById('manifestOutput').value = JSON.stringify(JSON.parse(manifest), null, 2);
+        document.getElementById('htmlOutput').value = htmlIndex.replace(/></g, '>\n<');
         let html = '';
-
-        for (let i = 0; i < converter.getFileCount(); i++) {
-            const fileInfo = JSON.parse(converter.getFileInfo(i));
-            
-            let analysisHtml = `
-                <div class="analysis-item">
-                    <h4>${fileInfo.name}</h4>
-                    <p><strong>Type:</strong> ${fileInfo.type}</p>
-                    <p><strong>Size:</strong> ${this.formatSize(fileInfo.size)}</p>
-            `;
-
-            // Additional analysis for C++ files
-            if (fileInfo.type.includes('Source') || fileInfo.type.includes('C++')) {
-                const file = this.files.get(fileInfo.name);
-                if (file) {
-                    const cppAnalysis = converter.processCppFile(fileInfo.name);
-                    const analyzed = JSON.parse(cppAnalysis);
-                    analysisHtml += `
-                        <p><strong>Lines of code:</strong> ${analyzed.lines || 'N/A'}</p>
-                        <p><strong>Has main():</strong> ${analyzed.has_main ? 'Yes' : 'No'}</p>
-                    `;
-                }
+        for (let i = 0; i < fileCount; i++) {
+            const infoStr = window.Module.ccall('getFileInfo', 'string', ['number'], [i]);
+            const fileInfo = JSON.parse(infoStr);
+            const file = this.files.get(fileInfo.name);
+            const hasMain = file && file.content.includes('int main');
+            const lineCount = file ? (file.content.match(/\n/g) || []).length + 1 : 0;
+            html += `<div class="analysis-item"><h4>${fileInfo.name}</h4><p><strong>Type:</strong> ${fileInfo.type}</p><p><strong>Size:</strong> ${this.formatSize(fileInfo.size)}</p>`;
+            if (fileInfo.type.includes('Source')) {
+                html += `<p><strong>Lines:</strong> ${lineCount}</p><p><strong>Has main():</strong> ${hasMain ? 'Yes' : 'No'}</p>`;
             }
-
-            analysisHtml += '</div>';
-            html += analysisHtml;
+            html += '</div>';
         }
-
-        analysisOutput.innerHTML = html || '<p>No files to analyze</p>';
-    }
-
-    formatHtml(html) {
-        // Simple HTML formatting
-        return html.replace(/></g, '>\n<');
+        document.getElementById('analysisOutput').innerHTML = html || '<p>No files</p>';
     }
 
     switchTab(tabName) {
-        // Hide all tabs
-        document.querySelectorAll('.tab-pane').forEach(pane => {
-            pane.classList.remove('active');
-        });
-
-        // Deactivate all buttons
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.classList.remove('active');
-        });
-
-        // Show selected tab
+        document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         document.getElementById(`${tabName}-tab`).classList.add('active');
-
-        // Activate button
         document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
     }
 
@@ -332,28 +219,30 @@ class FileConverterApp {
     log(message, type = 'info') {
         const logs = document.getElementById('logs');
         if (!logs) return;
-
         const entry = document.createElement('div');
         entry.className = `log-entry log-${type}`;
-        const timestamp = new Date().toLocaleTimeString();
-        entry.textContent = `[${timestamp}] ${message}`;
-        // Verify Module exists and has FileConverter
-        if (typeof window.Module === 'undefined' || !window.Module.FileConverter) {
-            throw new Error('FileConverter class not found in Module');
-        }
-        
-        app = new FileConverterApp();
-        console.log('✅ Application initialized successfully');
-    } catch (error) {
-        console.error('❌ Failed to initialize app:', error);
-        const indicator = document.getElementById('statusIndicator');
-        if (indicator) {
-            indicator.innerHTML = `<span style="color: #e74c3c;">❌ ${error.message}</span>`;
-        }
+        entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+        logs.appendChild(entry);
+        logs.scrollTop = logs.scrollHeight;
     }
 }
 
-// Global function for downloading
+let app;
+
+function wasmReady() {
+    try {
+        if (typeof window.Module === 'undefined' || !window.Module.ccall) {
+            throw new Error('ccall function not found');
+        }
+        app = new FileConverterApp();
+        console.log('✅ App initialized');
+    } catch (error) {
+        console.error('❌ Init failed:', error);
+        const indicator = document.getElementById('statusIndicator');
+        if (indicator) indicator.innerHTML = `<span style="color: #e74c3c;">❌ ${error.message}</span>`;
+    }
+}
+
 function downloadFile(filename, content) {
     const blob = new Blob([content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
@@ -366,45 +255,17 @@ function downloadFile(filename, content) {
     URL.revokeObjectURL(url);
 }
 
-// Initialize app when page loads
 window.addEventListener('DOMContentLoaded', () => {
-    console.log('📄 Page loaded, waiting for WASM module...');
-    
     if (typeof window.Module !== 'undefined') {
-        console.log('📦 Module found, setting up initialization');
-        
-        // Set up the runtime initialized callback
         if (!window.Module.onRuntimeInitialized) {
             window.Module.onRuntimeInitialized = wasmReady;
         } else {
-            // If callback already exists, wrap it
-            const originalCallback = window.Module.onRuntimeInitialized;
+            const oldCallback = window.Module.onRuntimeInitialized;
             window.Module.onRuntimeInitialized = () => {
-                if (typeof originalCallback === 'function') originalCallback();
+                if (typeof oldCallback === 'function') oldCallback();
                 wasmReady();
             };
         }
-        
-        // If module is already initialized, call wasmReady immediately
-        if (window.Module.calledRun) {
-            console.log('⚡ Module already initialized, initializing app');
-            wasmReady();
-        }
-    } else {
-        console.error('❌ Module not found - converter.js may not be loaded');
-        const indicator = document.getElementById('statusIndicator');
-        if (indicator) {
-            indicator.innerHTML = '<span style="color: #e74c3c;">❌ Failed to load WASM module</span>';
-        }
-        } else {
-            Module.onRuntimeInitialized = wasmReady;
-        }
-        
-        // If FileConverter is already available, init immediately
-        if (Module.FileConverter) {
-            wasmReady();
-        }
-    } else {
-        console.error('❌ Module not found - converter.js may not be loaded');
+        if (window.Module.calledRun) wasmReady();
     }
 });

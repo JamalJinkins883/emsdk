@@ -3,10 +3,12 @@
 <head>
     <title>WASM Debug</title>
     <style>
-        body { font-family: monospace; padding: 20px; background: #f0f0f0; }
-        .log { background: white; padding: 10px; margin: 10px 0; border-left: 4px solid #3498db; }
-        .error { border-left-color: #e74c3c; }
-        .success { border-left-color: #27ae60; }
+        body { font-family: monospace; padding: 20px; background: #1e1e1e; color: #ddd; }
+        .log { background: #2d2d2d; padding: 10px; margin: 10px 0; border-left: 4px solid #3498db; }
+        .error { border-left-color: #e74c3c; color: #e74c3c; }
+        .success { border-left-color: #27ae60; color: #27ae60; }
+        .info { color: #3498db; }
+        pre { background: #1a1a1a; overflow-x: auto; }
     </style>
 </head>
 <body>
@@ -23,55 +25,61 @@
             console.log(msg);
         }
 
-        log('1. Page loading...', 'info');
-        log(`2. Module global: ${typeof window.Module}`, 'info');
-
-        window.addEventListener('DOMContentLoaded', () => {
-            log('3. DOMContentLoaded event', 'info');
-            log(`4. Module global in DOM: ${typeof window.Module}`, 'info');
-        });
-
+        log('1. Script started', 'info');
+        
     </script>
+    
     <script src="converter.js"></script>
+    
     <script>
-       log('5. After converter.js loaded', 'info');
-        log(`6. Module globally: ${typeof window.Module}`, 'info');
-        log(`7. Module.FileConverter: ${typeof window.Module?.FileConverter}`, 'info');
-        log(`8. Module.calledRun: ${window.Module?.calledRun}`, 'info');
-
-        // Set up callback to see when module initializes
-        if (window.Module) {
-            const oldInit = window.Module.onRuntimeInitialized;
-            window.Module.onRuntimeInitialized = () => {
-                log('📢 onRuntimeInitialized called!', 'success');
-                if (typeof oldInit === 'function') oldInit();
-            };
-        }
-
-        // Check progression
-        const checks = [100, 500, 1000, 2000, 5000];
-        checks.forEach(ms => {
-            setTimeout(() => {
-                log(`⏱️ After ${ms}ms:`, 'info');
-                log(`  Module: ${typeof window.Module}`, 'info');
-                log(`  FileConverter: ${typeof window.Module?.FileConverter}`, 'info');
-                log(`  calledRun: ${window.Module?.calledRun}`, 'info');
-
-                if (window.Module && window.Module.FileConverter) {
-                    log('✅ Module ready! Attempting to create instance...', 'success');
-                    try {
-                        const conv = new window.Module.FileConverter();
-                        conv.addFile('test.txt', 'Text', 'hello world');
-                        const count = conv.getFileCount();
-                        const info = conv.getFileInfo(0);
-                        log(`✅ Success! FileCount: ${count}, Info: ${info}`, 'success');
-                        conv.delete();
-                    } catch (e) {
-                        log(`❌ Error: ${e.message} (${e.stack})`, 'error');
-                    }
+        log('2. converter.js loaded, checking Module...', 'info');
+        
+        if (typeof Module === 'undefined') {
+            log('❌ Module is undefined!', 'error');
+        } else {
+            log('✅ Module exists: ' + typeof Module, 'success');
+            
+            const keys = Object.keys(Module || {}).filter(k => !k.startsWith('_'));
+            log(`Keys in Module (first 10): ${keys.slice(0, 10).join(', ')}`, 'info');
+            
+            if (Module.FileConverter) {
+                log('✅ Module.FileConverter found!', 'success');
+            } else {
+                log('❌ Module.FileConverter NOT found', 'error');
+                if (Module.ccall && Module.cwrap) {
+                    log('But Module has ccall/cwrap, so WASM loaded', 'info');
                 }
-            }, ms);
-        });
+            }
+        }
+        
+        // Try async check
+        let checkCount = 0;
+        const interval = setInterval(() => {
+            checkCount++;
+            if (checkCount > 50) {
+                log('❌ Timeout waiting for FileConverter', 'error');
+                clearInterval(interval);
+                return;
+            }
+            
+            if (typeof Module !== 'undefined' && Module.FileConverter) {
+                log(`✅ FileConverter became available after ${checkCount * 100}ms!`, 'success');
+                clearInterval(interval);
+                
+                try {
+                    const converter = new Module.FileConverter();
+                    log('✅ Created FileConverter instance', 'success');
+                    converter.addFile('test.cpp', 'C++ Source', '#include <iostream>');
+                    const count = converter.getFileCount();
+                    log(`✅ Added file, count: ${count}`, 'success');
+                    converter.delete();
+                } catch (e) {
+                    log(`❌ Error using FileConverter: ${e.message}`, 'error');
+                    log(`Stack: ${e.stack}`, 'error');
+                }
+            }
+        }, 100);
+        
     </script>
 </body>
 </html>
