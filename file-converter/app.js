@@ -580,6 +580,8 @@ emcc ${cppFiles[0].name} -o output.js --bind -s WASM=1
             this.compiledWasm = data.wasm;
             this.showCompiledPreview();
             document.getElementById('analysisOutput').innerHTML = this.generateAnalysis();
+            // automatically switch to compiled view
+            this.switchTab('compiled');
         })
         .catch(err => {
             this.log(`❌ Network error: ${err.message}`, 'error');
@@ -587,7 +589,7 @@ emcc ${cppFiles[0].name} -o output.js --bind -s WASM=1
     }
 
     showCompiledPreview() {
-        // create blobs from base64
+        // convert base64 strings to blobs
         const jsBlob = this.base64ToBlob(this.compiledJS, 'application/javascript');
         const wasmBlob = this.base64ToBlob(this.compiledWasm, 'application/wasm');
         const jsUrl = URL.createObjectURL(jsBlob);
@@ -602,7 +604,20 @@ emcc ${cppFiles[0].name} -o output.js --bind -s WASM=1
 <script src="${jsUrl}"></script>
 </body>
 </html>`;
+        // populate HTML tab with preview as well
         document.getElementById('htmlOutput').value = preview;
+        // update compiled tab content
+        this.updateCompiledTab(preview);
+    }
+
+    updateCompiledTab(previewHtml) {
+        const container = document.getElementById('compiledOutput');
+        if (!container) return;
+        let html = `<p>✅ Compilation succeeded. Files are ready.</p>`;
+        html += `<button class="btn" onclick="app.downloadCompiled()">Download output.js + output.wasm</button>`;
+        html += `<h3 style=\"margin-top:20px;\">Preview:</h3>`;
+        html += `<iframe style=\"width:100%;height:400px;\" srcdoc=\"${previewHtml.replace(/"/g,'&quot;')}\"></iframe>`;
+        container.innerHTML = html;
     }
 
     base64ToBlob(base64, mime) {

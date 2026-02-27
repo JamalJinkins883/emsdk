@@ -42,7 +42,7 @@ The File Converter is a web-based application powered by Emscripten and WebAssem
 
 ### 2. **Automatic Project Detection**
 
-The system automatically detects the type of project based on uploaded files:
+The system automatically detects the type of project based on uploaded files (relative folder structure is preserved when using the "Upload Folder" button):
 
 #### C++ Projects
 When C++ source files are detected:
@@ -95,6 +95,11 @@ For transparency the app still displays the equivalent Emscripten commands:
 - **Main Function Detection**: Identifies entry points
 - **File Type Classification**: C++, Header, C source
 - **Size Information**: File size in optimal units (B, KB, MB)
+
+**Compiled Output Tab**
+- After the backend compiles your C++ project the new "Compiled" tab appears
+- Preview the generated HTML with embedded WASM
+- Download `output.js` and `output.wasm` with a single click
 
 #### Generated Reports
 - **JSON Manifest**: Complete file metadata in JSON format

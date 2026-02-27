@@ -16,6 +16,12 @@ A web-based file converter that runs entirely in the browser using WebAssembly. 
   - Audio (.ogg, .wav, .mp3)
   - Other formats (.dll, .json, .txt, .vas)
 
+  *Relative paths are preserved when uploading folders; make sure to select the
+  top‑level project directory so `#include` directives resolve correctly. The
+  backend automatically adds every subdirectory as an `-I` search path, but all
+  required headers must be included in the upload—missing headers such as
+  `Glass/glass.hpp` will still cause a compilation error.*
+
 ## Project Structure
 
 ```

@@ -76,7 +76,19 @@ def compile_endpoint():
         output_js = os.path.join(tmpdir, "output.js")
         output_wasm = os.path.join(tmpdir, "output.wasm")
 
-        cmd = ["emcc", *sources, "-o", output_js, "-s", "WASM=1", "-O3"]
+        # gather include directories recursively so clang can resolve nested headers
+        include_dirs = set()
+        for root, dirs, _ in os.walk(tmpdir):
+            include_dirs.add(root)
+            # also consider subdirs as explicit include paths
+            for d in dirs:
+                include_dirs.add(os.path.join(root, d))
+        include_flags = []
+        for d in include_dirs:
+            include_flags.extend(["-I", d])
+
+        # compile with multiple include paths
+        cmd = ["emcc", *sources, "-o", output_js, "-s", "WASM=1", "-O3"] + include_flags
         proc = subprocess.run(cmd, cwd=tmpdir, capture_output=True, text=True)
         if proc.returncode != 0:
             return jsonify({
