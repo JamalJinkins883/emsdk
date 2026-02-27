@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Converter - Emscripten Powered</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔄 File Converter</h1>
+            <p>Convert your project files to web-compatible formats</p>
+            <div id="statusIndicator" style="text-align: center; margin-top: 10px; font-size: 0.9em;">
+                <span style="color: #f39c12;">⏳ Initializing...</span>
+            </div>
+        </header>
+
+        <main>
+            <section class="upload-section">
+                <h2>Upload Files</h2>
+                <div class="drop-zone" id="dropZone">
+                    <p>Drag and drop files here or click to select</p>
+                    <input type="file" id="fileInput" multiple accept=".cpp,.h,.c,.png,.jpg,.jpeg,.ogg,.wav,.mp3,.dll,.txt,.json,.vas">
+                </div>
+            </section>
+
+            <section class="file-list-section">
+                <h2>Uploaded Files</h2>
+                <div id="fileList" class="file-list">
+                    <p class="empty-state">No files uploaded yet</p>
+                </div>
+                <div class="file-stats">
+                    <p>Total files: <span id="fileCount">0</span></p>
+                    <p>Total size: <span id="totalSize">0 B</span></p>
+                </div>
+            </section>
+
+            <section class="controls">
+                <button id="processBtn" class="btn btn-primary" disabled>Process Files</button>
+                <button id="clearBtn" class="btn btn-secondary">Clear All</button>
+            </section>
+
+            <section class="output-section" id="outputSection" style="display: none;">
+                <h2>Generated Output</h2>
+                
+                <div class="output-tabs">
+                    <button class="tab-btn active" data-tab="manifest">Manifest</button>
+                    <button class="tab-btn" data-tab="html">HTML Index</button>
+                    <button class="tab-btn" data-tab="analysis">Analysis</button>
+                </div>
+
+                <div class="tab-content">
+                    <div class="tab-pane active" id="manifest-tab">
+                        <textarea id="manifestOutput" class="output-textarea" readonly></textarea>
+                        <button class="btn btn-small" onclick="downloadFile('manifest.json', document.getElementById('manifestOutput').value)">
+                            Download Manifest
+                        </button>
+                    </div>
+
+                    <div class="tab-pane" id="html-tab">
+                        <textarea id="htmlOutput" class="output-textarea" readonly></textarea>
+                        <button class="btn btn-small" onclick="downloadFile('index.html', document.getElementById('htmlOutput').value)">
+                            Download HTML
+                        </button>
+                    </div>
+
+                    <div class="tab-pane" id="analysis-tab">
+                        <div id="analysisOutput" class="analysis-output"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="logs" id="logsSection" style="display: none;">
+                <h2>Processing Logs</h2>
+                <div id="logs" class="logs-content"></div>
+            </section>
+        </main>
+
+        <footer>
+            <p>Powered by Emscripten WebAssembly</p>
+        </footer>
+    </div>
+
+    <!-- Load converter.js first (contains WASM module) -->
+    <script src="converter.js"></script>
+    <!-- Then load app.js which depends on Module -->
+    <script src="app.js"></script>
+</body>
+</html>

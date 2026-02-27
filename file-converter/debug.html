@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WASM Debug</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #f0f0f0; }
+        .log { background: white; padding: 10px; margin: 10px 0; border-left: 4px solid #3498db; }
+        .error { border-left-color: #e74c3c; }
+        .success { border-left-color: #27ae60; }
+    </style>
+</head>
+<body>
+    <h1>WebAssembly Module Debug</h1>
+    <div id="debug"></div>
+
+    <script>
+        function log(msg, type = 'info') {
+            const debug = document.getElementById('debug');
+            const div = document.createElement('div');
+            div.className = 'log ' + type;
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            debug.appendChild(div);
+            console.log(msg);
+        }
+
+        log('1. Page loading...', 'info');
+        log(`2. Module global: ${typeof window.Module}`, 'info');
+
+        window.addEventListener('DOMContentLoaded', () => {
+            log('3. DOMContentLoaded event', 'info');
+            log(`4. Module global in DOM: ${typeof window.Module}`, 'info');
+        });
+
+    </script>
+    <script src="converter.js"></script>
+    <script>
+       log('5. After converter.js loaded', 'info');
+        log(`6. Module globally: ${typeof window.Module}`, 'info');
+        log(`7. Module.FileConverter: ${typeof window.Module?.FileConverter}`, 'info');
+        log(`8. Module.calledRun: ${window.Module?.calledRun}`, 'info');
+
+        // Set up callback to see when module initializes
+        if (window.Module) {
+            const oldInit = window.Module.onRuntimeInitialized;
+            window.Module.onRuntimeInitialized = () => {
+                log('📢 onRuntimeInitialized called!', 'success');
+                if (typeof oldInit === 'function') oldInit();
+            };
+        }
+
+        // Check progression
+        const checks = [100, 500, 1000, 2000, 5000];
+        checks.forEach(ms => {
+            setTimeout(() => {
+                log(`⏱️ After ${ms}ms:`, 'info');
+                log(`  Module: ${typeof window.Module}`, 'info');
+                log(`  FileConverter: ${typeof window.Module?.FileConverter}`, 'info');
+                log(`  calledRun: ${window.Module?.calledRun}`, 'info');
+
+                if (window.Module && window.Module.FileConverter) {
+                    log('✅ Module ready! Attempting to create instance...', 'success');
+                    try {
+                        const conv = new window.Module.FileConverter();
+                        conv.addFile('test.txt', 'Text', 'hello world');
+                        const count = conv.getFileCount();
+                        const info = conv.getFileInfo(0);
+                        log(`✅ Success! FileCount: ${count}, Info: ${info}`, 'success');
+                        conv.delete();
+                    } catch (e) {
+                        log(`❌ Error: ${e.message} (${e.stack})`, 'error');
+                    }
+                }
+            }, ms);
+        });
+    </script>
+</body>
+</html>
